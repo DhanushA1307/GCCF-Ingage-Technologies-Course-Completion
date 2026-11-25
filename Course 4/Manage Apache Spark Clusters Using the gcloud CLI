@@ -1,0 +1,92 @@
+#Manage Apache Spark Clusters Using the gcloud CLI
+
+#!/bin/bash
+# Region: pass as an argument (bash lab.sh us-east1) or it defaults to us-central1.
+# Use the region shown in your lab panel if it differs.
+#REGION="${1:-us-central1}"
+#read -p "Region: " REGION
+
+#gcloud auth login --no-launch-browser
+export PROJECT_ID=$(gcloud config get-value project 2>/dev/null || true)
+export ZONE=$(gcloud compute project-info describe \
+  --format="value(commonInstanceMetadata.items[google-compute-default-zone])")
+export REGION=${ZONE%-*}
+
+gcloud config set project $PROJECT_ID
+gcloud config set compute/region $REGION
+gcloud config set compute/zone $ZONE
+
+
+CLUSTER="example-cluster"
+
+echo "Using region: $REGION"
+gcloud config set dataproc/region "$REGION"
+
+# ---------- Task 1: Create a cluster ----------
+
+# Reset and re-enable the Dataproc API
+gcloud services disable dataproc.googleapis.com --force
+gcloud services enable dataproc.googleapis.com
+
+# Project variables
+
+gcloud config set project "$PROJECT_ID"
+PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
+SA="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+
+# Grant roles to the Compute Engine default service account
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="$SA" --role=roles/storage.admin --condition=None
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="$SA" --role=roles/dataproc.worker --condition=None
+
+# Private Google Access on the subnet, in the SAME region as the cluster
+gcloud compute networks subnets update default \
+  --region="$REGION" --enable-private-ip-google-access
+
+# Let the API enablement and IAM changes propagate
+echo "Waiting 90 seconds for permissions to propagate..."
+sleep 90
+
+# Remove a leftover cluster if one exists (for example, one in ERROR state)
+if gcloud dataproc clusters describe "$CLUSTER" --region="$REGION" >/dev/null 2>&1; then
+  echo "Existing cluster found. Deleting it first..."
+  gcloud dataproc clusters delete "$CLUSTER" --region="$REGION" --quiet
+fi
+
+# Create the cluster
+gcloud dataproc clusters create "$CLUSTER" \
+  --region="$REGION" \
+  --worker-boot-disk-size=500 \
+  --worker-machine-type=e2-standard-4 \
+  --master-machine-type=e2-standard-4 \
+  --quiet
+
+# Stop here if the cluster is not RUNNING
+STATE=$(gcloud dataproc clusters describe "$CLUSTER" --region="$REGION" \
+  --format="value(status.state)")
+echo "Cluster state: $STATE"
+
+if [ "$STATE" != "RUNNING" ]; then
+  echo "Cluster is not RUNNING. Details:"
+  gcloud dataproc clusters describe "$CLUSTER" --region="$REGION" \
+    --format="value(status.detail)"
+  exit 1
+fi
+
+# ---------- Task 2: Submit a job ----------
+gcloud dataproc jobs submit spark \
+  --cluster="$CLUSTER" \
+  --region="$REGION" \
+  --class=org.apache.spark.examples.SparkPi \
+  --jars=file:///usr/lib/spark/examples/jars/spark-examples.jar \
+  -- 1000
+
+gcloud dataproc jobs list --region="$REGION" --cluster="$CLUSTER"
+
+# ---------- Task 3: Update the cluster ----------
+gcloud dataproc clusters update "$CLUSTER" --region="$REGION" --num-workers=4
+gcloud dataproc clusters update "$CLUSTER" --region="$REGION" --num-workers=2
+
+echo "Done."
