@@ -1,7 +1,7 @@
 #!/bin/bash
 echo
 # Choose Course Folder
-choose_folder_name=("Course 1" "Course 2" "Course 3" "Course 4")
+choose_folder_name=("Course_1" "Course_2" "Course_3" "Course_4")
 
 for course in "${choose_folder_name[@]}"; do
     echo "$course"
