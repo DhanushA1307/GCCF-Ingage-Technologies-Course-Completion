@@ -19,7 +19,7 @@ if ! [[ "$choose_the_course_no" =~ ^[0-9]+$ ]] || \
     exit 1
 fi
 
-cd ~/"GCCF-Ingage-Technologies-Course-Completion"/"${choose_folder_name[${choose_the_course_no}]}"
+cd ~/"GCCF-Ingage-Technologies-Course-Completion"/"${choose_folder_name[${choose_the_course_no-1}]}"
 
 # Course File Names
 case "$choose_the_course_no" in
