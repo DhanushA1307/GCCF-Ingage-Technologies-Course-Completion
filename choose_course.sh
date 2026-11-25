@@ -1,5 +1,5 @@
 #!/bin/bash
-
+echo
 # Choose Course Folder
 choose_folder_name=("Course 1: Cloud Computing Fundamentals" "Course 2: Infrastructure in Google Cloud" "Course 3: Networking & Security in Google Cloud" "Course 4: Data, ML, and AI in Google Cloud")
 
