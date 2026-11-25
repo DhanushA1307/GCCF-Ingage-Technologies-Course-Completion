@@ -91,4 +91,4 @@ fi
 selected_file="${lst[$((choose_file_input-1))]}"
 
 echo
-bash "~/GCCF-Ingage-Technologies-Course-Completion/${choose_folder_name[$((choose_the_course_no-1))]}/$selected_file.sh"
+bash "~/GCCF-Ingage-Technologies-Course-Completion/${choose_folder_name[$((choose_the_course_no-1))]}/\"$selected_file\".sh"
